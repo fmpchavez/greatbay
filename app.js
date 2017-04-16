@@ -22,8 +22,10 @@ var start = function(){
     }).then(function(answer){
         if(answer.postOrBid.toUpperCase()=="POST"){
             //postAuction();
+            postAuction();
         } else {
             //bidAuction();
+            bidAuction();
         }
     })
 }
@@ -59,4 +61,54 @@ var postAuction = function(){
             start();
         }) 
     }) //the above code sends query to mysql adding item to db
+}
+
+var bidAuction = function(){
+    connection.query("SELECT * FROM auctions",function(err,res){
+        console.log(res);
+        inquirer.prompt({
+            name:"choice",
+            type:"list",
+            choices: function(value){
+                var choiceArray = [];
+                for(var i=0;i<res.length;i++){
+                    choiceArray.push(res[i].itemName);
+                }
+                return choiceArray;
+            },
+            message:"what auction would you like to place a bid on?"
+        }).then(function(answer){
+            for(var i=0;i<res.length;i++){
+                if(res[i].itemName==answer.choice){
+                    var chosenItem = res[i];
+                    inquirer.prompt({
+                        name:"bid",
+                        type:"input",
+                        message:"how much would you like to bid?",
+                        validate: function(value){
+                            if(isNaN(value)==false){
+                                return true;
+                            } else {
+                                return false;
+                            }
+                        }
+                    }).then(function(answer){
+                        if(chosenItem.highestbid < parseInt(answer.bid)){
+                            connection.query("UPDATE auctions SET ? WHERE ?",[{
+                                highestbid: answer.bid
+                            },{
+                                id:chosenItem.id
+                            }], function(err,res){
+                                console.log("Bid successfully placed!");
+                                start();
+                            });
+                        } else {
+                            console.log("You were out bid! Try again...");
+                            start();
+                        }
+                    })
+                }
+            }
+        })
+    })
 }
